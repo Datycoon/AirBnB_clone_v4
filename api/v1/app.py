@@ -1,47 +1,49 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Sep  1 14:42:23 2020
-@authors: Robinson Montes
-          Mauricio Olarte
-"""
-from os import getenv
-from flask import Flask, jsonify, Blueprint
+""" Flask Application """
 from models import storage
 from api.v1.views import app_views
+from os import environ
+from flask import Flask, render_template, make_response, jsonify
 from flask_cors import CORS
+from flasgger import Swagger
+from flasgger.utils import swag_from
 
 app = Flask(__name__)
-CORS(app, origins="0.0.0.0")
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 app.register_blueprint(app_views)
-CORS(app_views)
+cors = CORS(app, resources={r"/api/v1/*": {"origins": "*"}})
 
 
 @app.teardown_appcontext
-def close_db_sesion(error):
-    """ this for slash routing"""
+def close_db(error):
+    """ Close Storage """
     storage.close()
 
 
 @app.errorhandler(404)
-def page_not_found(e):
-    """Handler for 404 errors that returns a JSON-formatted
-    404 status code response.
+def not_found(error):
+    """ 404 Error
+    ---
+    responses:
+      404:
+        description: a resource was not found
     """
-    return jsonify({'error': 'Not found'}), 404
+    return make_response(jsonify({'error': "Not found"}), 404)
+
+app.config['SWAGGER'] = {
+    'title': 'AirBnB clone Restful API',
+    'uiversion': 3
+}
+
+Swagger(app)
 
 
 if __name__ == "__main__":
-    HBNB_API_HOST = getenv('HBNB_API_HOST')
-    HBNB_API_PORT = getenv('HBNB_API_PORT')
-
-    if HBNB_API_HOST is None:
-        print("Error: HBNB_API_HOST environment variable not set.")
-        exit(1)
-
-    if HBNB_API_PORT is None:
-        print("Error: HBNB_API_PORT environment variable not set.")
-        exit(1)
-
-    app.run(host=HBNB_API_HOST, port=HBNB_API_PORT,
-            threaded=True, debug=True)
+    """ Main Function """
+    host = environ.get('HBNB_API_HOST')
+    port = environ.get('HBNB_API_PORT')
+    if not host:
+        host = '0.0.0.0'
+    if not port:
+        port = '5000'
+    app.run(host=host, port=port, threaded=True)
